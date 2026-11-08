@@ -1,1 +1,37 @@
-Aún en proceso.
+Este proceso corresponde al motor de alertas y emparejamiento automático de una plataforma inmobiliaria. Cada vez que ingresan
+propiedades nuevas, el sistema debe contrastar sus atributos (zona, rango de precio, superficio y tipo de contrato) contra todas las
+búsquedas guardadas activas de los clientes interesados. Actualmente, este trabajo lo sufre el servidor de backend y los agentes 
+comerciales, quienes reciben las notificaciones con hasta 25 minutos de retraso. El volumen de datos es de unas 12,000 propiedades
+activas que se comparan frente a más de 35,000 criterios de búsqueda guardadas. Como la verificación evalúa pares uno a uno mediante
+bucles anidados en memoria (O(n x m)) verificando solapamiento de polígonos y rangos, el consumo de memoria se dispara y congela
+tareas en cola. La optimización busca estructurar las búsquedas en índices espaciales y árboles de búsqueda para reducir la
+complejidad a O(n log m), bajando el procesamiento a menos tiempo.
+
+Estimación del Orden de Crecimiento
+    - O(N * M) Cuadrática respecto a la entrada.
+    - Evalúa pares mediante bucles anidados donde cada una de las N propiedades se comparara una por una frente a la totalidad de 
+    las M búsquedas sin ningún tipo de pre-filtrado o indexación en memoria.
+
+Ejemplo de Datos
+
+id_propiedad,tipo,zona,ciudad,precio_usd,superficie_m2,habitaciones,fecha_publicacion
+PROP-501,Departamento,Norte,Cochabamba,78000,95,3,2026-10-10
+PROP-502,Casa,Cala Cala,Cochabamba,165000,240,4,2026-10-10
+PROP-503,Terreno,Tiquipaya,Cochabamba,52000,310,0,2026-10-11
+PROP-504,Departamento,Sud,Cochabamba,43000,60,2,2026-10-11
+PROP-505,Oficina,Centro,Cochabamba,35000,45,1,2026-10-11
+PROP-506,Casa,Sarco,Cochabamba,140000,190,3,2026-10-12
+PROP-507,Departamento,Queru Queru,Cochabamba,92000,110,3,2026-10-12
+PROP-508,Casa,Colcapirhua,Cochabamba,115000,180,3,2026-10-12
+PROP-509,Departamento,Las Cuadras,Cochabamba,61000,75,2,2026-10-13
+PROP-510,Terreno,Sacaba,Cochabamba,38000,250,0,2026-10-13
+PROP-511,Departamento,Norte,Cochabamba,85000,102,3,2026-10-13
+PROP-512,Casa,Tiquipaya,Cochabamba,210000,320,5,2026-10-14
+PROP-513,Departamento,Centro,Cochabamba,55000,68,2,2026-10-14
+PROP-514,Oficina,Norte,Cochabamba,48000,55,2,2026-10-14
+PROP-515,Casa,Muyurina,Cochabamba,175000,220,4,2026-10-15
+PROP-516,Departamento,Cala Cala,Cochabamba,89000,98,3,2026-10-15
+PROP-517,Terreno,Quillacollo,Cochabamba,29000,200,0,2026-10-15
+PROP-518,Departamento,Tupuraya,Cochabamba,105000,125,3,2026-10-16
+PROP-519,Casa,Sud,Cochabamba,98000,160,3,2026-10-16
+PROP-520,Departamento,Norte,Cochabamba,74000,88,2,2026-10-16
