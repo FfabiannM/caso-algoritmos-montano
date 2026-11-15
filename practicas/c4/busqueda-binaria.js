@@ -1,5 +1,6 @@
+// Busqueda Binaria hecha para la clase
 const datos = [3,8,12,19,25,31,40,47];
-const buscando = 5;
+const buscando = 31;
 
 function buscarNumero(Datos) {
     let pasos = 0;

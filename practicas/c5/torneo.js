@@ -39,6 +39,31 @@ function mergeSort(arr) {
     return result;
 }
 
+function quickSort(arr) {
+
+    if(arr.length <= 1) {
+        return arr;
+    }
+
+    const pivotIndex = Math.floor(arr.length / 2);
+    const pivot = arr[pivotIndex];
+
+    const left = [];
+    const right = [];
+
+    for(let i = 0; i < arr.length; i++) {
+        if(i === pivotIndex) continue;
+
+        if(arr[i] < pivot) {
+            left.push(arr[i]);
+        } else {
+            right.push(arr[i]);
+        }
+    }
+
+    return [...quickSort(left), pivot, ...quickSort(right)];
+}
+
 function nativeSort(arr) {
     const a = arr.slice();
     return a.sort((x, y) => x - y);
@@ -94,13 +119,15 @@ function medirTiempo(fn, data, corridas = 3) {
     return { tiempos, promedio };
 }
 
+
 function ejecutarTorneo() {
-    const cantidades = [10000, 20000, 40000, 80000];
+    const cantidades = [10000, 20000, 40000, 80000, 150000];
 
     const competidores = [
         { nombre: "Insertion", fn: insertionSort },
         { nombre: "MergeSort", fn: mergeSort },
-        { nombre: "Array.prototype.sort", fn: nativeSort },
+        { nombre: ".sort() Nativo", fn: nativeSort },
+        { nombre: "QuickSort", fn: quickSort },
     ];
 
     verificarAlgoritmos(competidores);
@@ -117,8 +144,8 @@ function ejecutarTorneo() {
 
         for (const comp of competidores) {
             const { tiempos, promedio } = medirTiempo(comp.fn, dataset, 3);
-            const detalleTiempos = tiempos.map(t => `${t.toFixed(1)}ms`).join(" | ");
-            // fila[`${comp.nombre} [Corridas]`] = detalleTiempos;
+            /*const detalleTiempos = tiempos.map(t => `${t.toFixed(1)}ms`).join(" | ");
+            fila[`${comp.nombre} [Corridas]`] = detalleTiempos; */
             fila[`${comp.nombre} [Promedio]`] = `${promedio.toFixed(2)} ms`;
         }
 
@@ -138,17 +165,18 @@ ejecutarTorneo();
 La función nativa de JS .sort() es más estable por especificación, pero este no permitiría mantener la estrategia
 Divide y Vencerás, por lo cual se mantendría con *MergeSort*. Siguiendo la problemática, al querer realizar una 
 exportación o comparación, estos datos están semi-ordenados, por lo cual QuickSort sin pivote aleatorio cae en su 
-mismo problema de lentitud, esto volvería a MergeSort una garantía a O (n log n).
+mismo problema de lentitud, esto volvería a MergeSort una garantía y mejor opción a O (n log n).
 
-Diferencia de tiempos:
-
-┌─────────┬──────────────┬──────────────────────┬──────────────────────┬─────────────────────────────────┐
-│ (index) │ Cantidad (N) │ Insertion [Promedio] │ MergeSort [Promedio] │ Array.prototype.sort [Promedio] │
-├─────────┼──────────────┼──────────────────────┼──────────────────────┼─────────────────────────────────┤
-│ 0       │ '10.000'     │ '41.83 ms'           │ '3.13 ms'            │ '2.30 ms'                       │
-│ 1       │ '20.000'     │ '153.62 ms'          │ '6.22 ms'            │ '4.41 ms'                       │
-│ 2       │ '40.000'     │ '596.52 ms'          │ '12.92 ms'           │ '9.33 ms'                       │
-│ 3       │ '80.000'     │ '2577.74 ms'         │ '58.66 ms'           │ '18.93 ms'                      │
-└─────────┴──────────────┴──────────────────────┴──────────────────────┴─────────────────────────────────┘
+Tabla diferencia de tiempos:
+                                                    TORNEO
+┌─────────┬──────────────┬──────────────────────┬──────────────────────┬───────────────────────────┬──────────────────────┐
+│ (index) │ Cantidad (N) │ Insertion [Promedio] │ MergeSort [Promedio] │ .sort() Nativo [Promedio] │ QuickSort [Promedio] │
+├─────────┼──────────────┼──────────────────────┼──────────────────────┼───────────────────────────┼──────────────────────┤
+│ 0       │ '10.000'     │ '39.70 ms'           │ '2.44 ms'            │ '1.91 ms'                 │ '4.08 ms'            │
+│ 1       │ '20.000'     │ '129.07 ms'          │ '5.73 ms'            │ '4.11 ms'                 │ '5.67 ms'            │
+│ 2       │ '40.000'     │ '510.70 ms'          │ '9.94 ms'            │ '8.71 ms'                 │ '16.02 ms'           │
+│ 3       │ '80.000'     │ '2045.79 ms'         │ '21.66 ms'           │ '20.04 ms'                │ '35.07 ms'           │
+│ 4       │ '150.000'    │ '7188.69 ms'         │ '41.74 ms'           │ '38.01 ms'                │ '52.29 ms'           │
+└─────────┴──────────────┴──────────────────────┴──────────────────────┴───────────────────────────┴──────────────────────┘
 
 */
