@@ -11,16 +11,11 @@ El motor de emparejamiento que administra dos colecciones para cruzar la oferta 
 
 ### 2. Qué operaciones se realizan y con qué frecuencia
 
-Operaciones de alta frecuencia
-
-- 1. Buscar por clave exacta: En caso de que una propiedad sea nueva, localizarla al instante qué tipo de búsqueda guardada puede pertenecer esa combinación exacta. En un mal mes, si entran 10,000 propiedades o se reevalúan, esta búsqueda de coincidencia ocurre miles de veces en minutos.
-- 2. Buscar por rango: Una vez ubicado a qué búsqueda puede pertenecer, este se debe filtrar qué clientes tienen un presupuesto donde `precio_min <= precio_usd <= precio_max` y `habitaciones >= habitaciones_min`. Esta es una de las operaciones más pesadas porque se está evaluando el precio y cantidad de habitaciones.
-
-#### Otras operaciones que se realizan con menor frecuencia
-
-- Insertar: Aunque en un día se pueden realizar varias inserciones, estas se realizan de manera incremental durante todo el día.
-- Borrar: Aunque realmente se desactivan, este proceso no es realmente común ya que también se permite la edición.
-- Recorrer en orden: Generalmente para realizar reportes.
+- **1. Buscar por clave exacta (Muy alta frecuencia)**: En caso de que una propiedad sea nueva, localizarla al instante qué tipo de búsqueda guardada puede pertenecer esa combinación exacta. En un mal mes, si entran 10,000 propiedades o se reevalúan, esta búsqueda de coincidencia ocurre muchas veces en varios minutos.
+- **2. Buscar por rango (Muy alta frecuencia - operación dominante)**: Una vez ubicado a qué búsqueda puede pertenecer, esta debe filtrar qué clientes tienen un presupuesto donde `precio_min <= precio_usd <= precio_max` y `habitaciones >= habitaciones_min`. Esta es una de las operaciones más pesadas porque se está evaluando el precio y cantidad de habitaciones.
+- **3. Obtener el menor o el siguiente (Frecuencia media)**: Filtrar qué inmuebles dentro de esa zona tienen un `precio_usd` entre `precio_min` y `precio_max` o directamente encontrar el inmueble con el precio inmediatamente siguiente cuando el cliente pregunta por opciones apenas por encima de su presupuesto límite.
+- **4. Recorrer en orden (Frecuencia media)**: Lista propiedades de una zona ordenadas de menor a mayor precio para reportes o actualiación de índices.
+- **5. Insertar y Borrar (Baja y media frecuencia)**: Media frecuencia para el registro de nuevas propiedades y baja para eliminar propiedades que son vendidas o canceladas.
 
 ### Tipo de operación, qué estructura la resuelve más barato, cuál sufre y como se aplican conceptos de Tabla Hash
 
