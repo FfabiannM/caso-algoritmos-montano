@@ -1,8 +1,10 @@
 const { performance } = require('perf_hooks');
 
-// --- GENERADOR DETERMINISTA DE PROPIEDADES (precio en bloques de $10k, retorno en $1k) ---
-function generarPropiedadesInversion(n, semilla = 42) {
-  const props = [];
+// --- GENERADOR DETERMINISTA DEL PROBLEMA ANÁLOGO (Cartera de Inversión Inmobiliaria) ---
+// Dado un presupuesto fijo C (en bloques de $10k) y n propiedades (precio, retorno anual),
+// maximizar el retorno total sin pasarse del presupuesto. Cada propiedad se compra entera o no.
+function generarPropiedadesInversion(n, semilla = 77) {
+  const props = new Array(n);
   let estado = semilla;
   const nextRand = (min, max) => {
     estado = (estado * 1664525 + 1013904223) % 4294967296;
@@ -10,72 +12,48 @@ function generarPropiedadesInversion(n, semilla = 42) {
   };
 
   for (let i = 0; i < n; i++) {
-    const precioBloques = nextRand(5, 35); // Entre $50k y $350k
-    const retornoAnual = nextRand(15, 110); // Entre $15k y $110k
-    props.push({
+    props[i] = {
       id: `PROP-${i + 1}`,
-      precio: precioBloques,
-      retorno: retornoAnual,
-    });
+      precio: nextRand(5, 30),   // Costo entre $50k y $300k
+      retorno: nextRand(10, 95), // Retorno anual entre $10k y $95k
+    };
   }
   return props;
 }
 
-// --- 1. ALGORITMO VORAZ: Mayor retorno por dólar invertido — O(n log n) ---
-// Rápido, pero NO garantiza el óptimo en la mochila 0/1
-function carteraVoraz(propiedades, presupuesto) {
-  const ordenadas = propiedades
-    .slice()
-    .sort((a, b) => b.retorno / b.precio - a.retorno / a.precio);
-
-  let gastado = 0;
-  let retornoTotal = 0;
-
-  for (let i = 0; i < ordenadas.length; i++) {
-    if (gastado + ordenadas[i].precio <= presupuesto) {
-      gastado += ordenadas[i].precio;
-      retornoTotal += ordenadas[i].retorno;
-    }
-  }
-  return retornoTotal;
-}
-
-// --- 2. FUERZA BRUTA: Prueba los 2^n subconjuntos — O(2^n) ---
-// Garantiza el óptimo, pero explota exponencialmente
+// --- 1. FUERZA BRUTA: Explora los 2^n subconjuntos — O(2^n) ---
 function carteraFuerzaBruta(propiedades, presupuesto) {
   const n = propiedades.length;
 
-  function explorar(idx, restante) {
-    if (idx === n || restante === 0) return 0;
+  function resolver(i, capRestante) {
+    if (i === n || capRestante === 0) return 0;
 
-    // Opción 1: No comprar la propiedad actual
-    let mejor = explorar(idx + 1, restante);
+    // Decisión 1: No comprar la propiedad i
+    let mejor = resolver(i + 1, capRestante);
 
-    // Opción 2: Comprarla si alcanza el presupuesto
-    const p = propiedades[idx];
-    if (p.precio <= restante) {
-      const conActual = p.retorno + explorar(idx + 1, restante - p.precio);
-      if (conActual > mejor) mejor = conActual;
+    // Decisión 2: Comprarla si alcanza el presupuesto
+    const p = propiedades[i];
+    if (p.precio <= capRestante) {
+      const conPropiedad = p.retorno + resolver(i + 1, capRestante - p.precio);
+      if (conPropiedad > mejor) mejor = conPropiedad;
     }
     return mejor;
   }
 
-  return explorar(0, presupuesto);
+  return resolver(0, presupuesto);
 }
 
-// --- 3. PROGRAMACIÓN DINÁMICA: Tabla n x capacidad (bottom-up) — O(n * C) ---
-// Garantiza el óptimo anotando cada subproblema una sola vez
+// --- 2. ESTRATEGIA ADECUADA: Programación Dinámica (Tabla bottom-up) — O(n * C) ---
+// Por qué no Voraz: elegir mayor retorno/precio falla con presupuesto tope (ej. cap 50 con (10,60), (20,100), (30,120)).
+// Por qué Dinámica: subestructura óptima + subproblemas repetidos anotados en tabla.
 function carteraDinamica(propiedades, presupuesto) {
   const n = propiedades.length;
-  // Tabla de (n + 1) filas x (presupuesto + 1) columnas
   const tabla = Array.from({ length: n + 1 }, () => new Int32Array(presupuesto + 1));
 
   for (let i = 1; i <= n; i++) {
     const p = propiedades[i - 1];
     for (let cap = 0; cap <= presupuesto; cap++) {
-      // Sin llevar la propiedad i
       let mejor = tabla[i - 1][cap];
-      // Llevando la propiedad i (si cabe en la capacidad actual)
       if (p.precio <= cap) {
         const llevando = p.retorno + tabla[i - 1][cap - p.precio];
         if (llevando > mejor) mejor = llevando;
@@ -86,12 +64,12 @@ function carteraDinamica(propiedades, presupuesto) {
   return tabla[n][presupuesto];
 }
 
-// --- PROTOCOLO: 1 corrida de calentamiento + 3 corridas medidas + promedio ---
+// --- Protocolo de medicion
 function medirProtocolo(fn, corridas = 3) {
-  // 1. Calentamiento (JIT V8 + caché)
+  // 1. Calentamiento 
   const resultado = fn();
 
-  // 2. 3 corridas cronometradas
+  // 2. 3 corridas
   let sumaMs = 0;
   for (let c = 0; c < corridas; c++) {
     const t0 = performance.now();
@@ -99,60 +77,52 @@ function medirProtocolo(fn, corridas = 3) {
     const t1 = performance.now();
     sumaMs += t1 - t0;
   }
+
   return { resultado, promedioMs: sumaMs / corridas };
 }
 
 function main() {
-  console.log('=== 1. CONTRAEJEMPLO: DONDE EL VORAZ SE EQUIVOCA ===');
-  const contraejemplo = [
-    { id: 'PROP-A', precio: 10, retorno: 60 },
-    { id: 'PROP-B', precio: 20, retorno: 100 },
-    { id: 'PROP-C', precio: 30, retorno: 120 },
-  ];
-  const presupuestoEj = 50;
-  console.log(`Presupuesto: ${presupuestoEj} ($500k)`);
-  console.log(`Voraz (mayor retorno/precio): ${carteraVoraz(contraejemplo, presupuestoEj)} ($160k) -> FALLA`);
-  console.log(`Programación Dinámica:        ${carteraDinamica(contraejemplo, presupuestoEj)} ($220k) -> ÓPTIMO`);
-  console.log(`Fuerza Bruta (2^n):           ${carteraFuerzaBruta(contraejemplo, presupuestoEj)} ($220k) -> ÓPTIMO`);
+  // Cuatro tamaños que se duplican: n = 3, 2n = 6, 4n = 12, 8n = 24
+  const nBase = 3;
+  const tamanios = [nBase, nBase * 2, nBase * 4, nBase * 8];
+  const presupuesto = 120; // $1,200,000 en bloques de $10k
 
-  console.log('\n=== 2. COMPARATIVA MEDIDA (Protocolo: 1 warm-up + 3 corridas) ===');
-  const tamanios = [16, 18, 20, 22];
-  const presupuestoTest = 120; // $1,200,000 en bloques de $10k
+  console.log('Ejecutando comparación: Fuerza Bruta O(2^n) vs. Programación Dinámica O(n * C)...\n');
 
-  let prevBrutaMs = 0;
-  const tablaResultados = [];
+  let prevBruta = 0;
+  let prevDinamica = 0;
+  const filas = [];
 
   for (const n of tamanios) {
-    const props = generarPropiedadesInversion(n, 100 + n);
+    const props = generarPropiedadesInversion(n, 50 + n);
 
-    const mVoraz = medirProtocolo(() => carteraVoraz(props, presupuestoTest), 3);
-    const mDinamica = medirProtocolo(() => carteraDinamica(props, presupuestoTest), 3);
-    const mBruta = medirProtocolo(() => carteraFuerzaBruta(props, presupuestoTest), 3);
+    const mBruta = medirProtocolo(() => carteraFuerzaBruta(props, presupuesto), 3);
+    const mDinamica = medirProtocolo(() => carteraDinamica(props, presupuesto), 3);
 
-    const ratioBruta = prevBrutaMs === 0 ? '-' : `x${(mBruta.promedioMs / prevBrutaMs).toFixed(2)}`;
-    const aciertaVoraz = mVoraz.resultado === mDinamica.resultado ? 'Sí' : `NO (${mVoraz.resultado})`;
+    // Verificación obligatoria: ambas deben dar exactamente el mismo óptimo
+    const iguales = mBruta.resultado === mDinamica.resultado;
+    if (!iguales) {
+      throw new Error(`Error en n=${n}: Bruta=${mBruta.resultado} != Dinamica=${mDinamica.resultado}`);
+    }
 
-    tablaResultados.push({
-      'Propiedades (n)': n,
+    const multBruta = prevBruta === 0 ? '-' : `x${(mBruta.promedioMs / prevBruta).toFixed(2)}`;
+    const multDin = prevDinamica === 0 ? '-' : `x${(mDinamica.promedioMs / prevDinamica).toFixed(2)}`;
+
+    filas.push({
+      n,
       'Óptimo ($k)': mDinamica.resultado,
-      'Voraz ¿acierta?': aciertaVoraz,
-      'Voraz (ms)': mVoraz.promedioMs.toFixed(4),
-      'Dinámica Tabla (ms)': mDinamica.promedioMs.toFixed(4),
-      'Fuerza Bruta (ms)': mBruta.promedioMs.toFixed(3),
-      'Ratio Bruta (+2 objs)': ratioBruta,
+      '¿Mismo resultado?': iguales ? 'Sí (verificado)' : 'NO',
+      'Fuerza Bruta (ms)': mBruta.promedioMs.toFixed(4),
+      'x (Bruta)': multBruta,
+      'Dinámica (ms)': mDinamica.promedioMs.toFixed(4),
+      'x (Dinámica)': multDin,
     });
 
-    prevBrutaMs = mBruta.promedioMs;
+    prevBruta = mBruta.promedioMs;
+    prevDinamica = mDinamica.promedioMs;
   }
 
-  console.table(tablaResultados);
-
-  // Prueba de escala real donde Fuerza Bruta es imposible (2^500)
-  const propsGrandes = generarPropiedadesInversion(500, 99);
-  const mDinamicaGrande = medirProtocolo(() => carteraDinamica(propsGrandes, 500), 3);
-  console.log(
-    `\nPrueba de escala (500 propiedades, capacidad 500): Tabla Dinámica = ${mDinamicaGrande.promedioMs.toFixed(2)} ms | Óptimo = $${mDinamicaGrande.resultado}k (Fuerza Bruta 2^500 es inviable)`
-  );
+  console.table(filas);
 }
 
 main();
